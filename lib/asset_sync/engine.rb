@@ -15,6 +15,7 @@ module AssetSync
         AssetSync.configure do |config|
           config.fog_provider = ENV['FOG_PROVIDER'] if ENV.has_key?('FOG_PROVIDER')
           config.fog_directory = ENV['FOG_DIRECTORY'] if ENV.has_key?('FOG_DIRECTORY')
+          config.fog_mirrors = ENV['FOG_MIRRORS'] if ENV.has_key?('FOG_MIRRORS')
           config.fog_region = ENV['FOG_REGION'] if ENV.has_key?('FOG_REGION')
 
           config.aws_access_key_id = ENV['AWS_ACCESS_KEY_ID'] if ENV.has_key?('AWS_ACCESS_KEY_ID')

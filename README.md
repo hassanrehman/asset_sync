@@ -82,6 +82,12 @@ Or, to use Google Storage Cloud, configure as this.
 ```
 
 
+For multiple hosts [read more](http://api.rubyonrails.org/v4.0.2/classes/ActionView/Helpers/AssetUrlHelper.html)
+``` ruby
+  #config/environments/production.rb
+  config.action_controller.asset_host = "//#{ENV['FOG_DIRECTORY']}%d.s3.amazonaws.com"
+```
+
 
 On **HTTPS**: the exclusion of any protocol in the asset host declaration above will allow browsers to choose the transport mechanism on the fly. So if your application is available under both HTTP and HTTPS the assets will be served to match.
 
@@ -146,6 +152,7 @@ heroku config:add FOG_REGION=eu-west-1
 heroku config:add ASSET_SYNC_GZIP_COMPRESSION=true
 heroku config:add ASSET_SYNC_MANIFEST=true
 heroku config:add ASSET_SYNC_EXISTING_REMOTE_FILES=keep
+heroku config:add FOG_MIRRORS=xxx1:xxx2:xxx3
 ```
 
 Or add to a traditional unix system
@@ -224,6 +231,7 @@ The generator will create a YAML file at `config/asset_sync.yml`.
 defaults: &defaults
   fog_provider: "AWS"
   fog_directory: "rails-app-assets"
+  fog_mirrors: nil
   aws_access_key_id: "<%= ENV['AWS_ACCESS_KEY_ID'] %>"
   aws_secret_access_key: "<%= ENV['AWS_SECRET_ACCESS_KEY'] %>"
   # You may need to specify what region your storage bucket is in

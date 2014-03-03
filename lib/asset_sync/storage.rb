@@ -20,6 +20,15 @@ module AssetSync
       @bucket ||= connection.directories.get(self.config.fog_directory, :prefix => self.config.assets_prefix)
     end
 
+    #SAGI
+    #TODO: support multiple assets_prefixes .. for now its just one prefix for all mirrors
+    def mirrors
+      @mirrors ||= self.config.fog_mirrors_list.inject({}) do |mirrors, fog_mirror|
+        mirrors[fog_mirror] = connection.directories.get(fog_mirror, :prefix => self.config.assets_prefix)
+        mirrors
+      end
+    end
+
     def log(msg)
       AssetSync.log(msg)
     end
@@ -95,12 +104,17 @@ module AssetSync
       end
     end
 
-    def get_remote_files
-      raise BucketNotFound.new("#{self.config.fog_provider} Bucket: #{self.config.fog_directory} not found.") unless bucket
+    def get_remote_files(fog_mirror=nil)
+      if fog_mirror.blank?
+        raise BucketNotFound.new("#{self.config.fog_provider} Bucket: #{self.config.fog_directory} not found.") unless bucket
+      else
+        raise BucketNotFound.new("#{self.config.fog_provider} Bucket: #{fog_mirror} not found.") unless mirrors[fog_mirror]
+      end
       # fixes: https://github.com/rumblelabs/asset_sync/issues/16
       #        (work-around for https://github.com/fog/fog/issues/596)
       files = []
-      bucket.files.each { |f| files << f.key }
+      from_bucket = fog_mirror.blank? ? bucket : mirrors[fog_mirror]
+      from_bucket.files.each { |f| files << f.key }
       return files
     end
 
@@ -111,20 +125,22 @@ module AssetSync
       end
     end
 
-    def delete_extra_remote_files
-      log "Fetching files to flag for delete"
-      remote_files = get_remote_files
+    def delete_extra_remote_files(fog_mirror=nil)
+      log "Fetching files to flag for delete (mirror: #{fog_mirror})"
+      remote_files = get_remote_files(fog_mirror)
       # fixes: https://github.com/rumblelabs/asset_sync/issues/19
       from_remote_files_to_delete = remote_files - local_files - ignored_files - always_upload_files
 
       log "Flagging #{from_remote_files_to_delete.size} file(s) for deletion"
       # Delete unneeded remote files
-      bucket.files.each do |f|
+      from_bucket = fog_mirror.blank? ? bucket : mirrors[fog_mirror]
+      from_bucket.files.each do |f|
         delete_file(f, from_remote_files_to_delete)
       end
+
     end
 
-    def upload_file(f)
+    def upload_file(f, to_bucket = nil)
       # TODO output files in debug logs as asset filename only.
       one_year = 31557600
       ext = File.extname(f)[1..-1]
@@ -203,12 +219,12 @@ module AssetSync
         })
       end
 
-      file = bucket.files.create( file ) unless ignore
+      file = (to_bucket || bucket).files.create( file ) unless ignore
     end
 
-    def upload_files
+    def upload_files(fog_mirror = nil)
       # get a fresh list of remote files
-      remote_files = ignore_existing_remote_files? ? [] : get_remote_files
+      remote_files = ignore_existing_remote_files? ? [] : get_remote_files(fog_mirror)
       # fixes: https://github.com/rumblelabs/asset_sync/issues/19
       local_files_to_upload = local_files - ignored_files - remote_files + always_upload_files
       local_files_to_upload = (local_files_to_upload + get_non_fingerprinted(local_files_to_upload)).uniq
@@ -216,7 +232,7 @@ module AssetSync
       # Upload new files
       local_files_to_upload.each do |f|
         next unless File.file? "#{path}/#{f}" # Only files.
-        upload_file f
+        upload_file f, (mirrors[fog_mirror] if fog_mirror)
       end
 
       if self.config.cdn_distribution_id && files_to_invalidate.any?
@@ -232,6 +248,15 @@ module AssetSync
       log "AssetSync: Syncing."
       upload_files
       delete_extra_remote_files unless keep_existing_remote_files?
+
+      #SAGI
+      fog_mirrors_list = self.config.fog_mirrors_list
+      log "AssetSync: Mirrors (#{fog_mirrors_list.count})"
+      fog_mirrors_list.each_with_index do |fog_mirror, i|
+        log "#{fog_mirror} (#{i+1}/#{fog_mirrors_list.length})"
+        upload_files(fog_mirror)
+        delete_extra_remote_files(fog_mirror) unless keep_existing_remote_files?
+      end
       log "AssetSync: Done."
     end
 

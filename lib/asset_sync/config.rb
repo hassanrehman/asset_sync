@@ -23,6 +23,7 @@ module AssetSync
     # FOG configuration
     attr_accessor :fog_provider          # Currently Supported ['AWS', 'Rackspace']
     attr_accessor :fog_directory         # e.g. 'the-bucket-name'
+    attr_accessor :fog_mirrors           # e.g. 'mirror-bucket0, mirror-bucket1 ..'  SAGI
     attr_accessor :fog_region            # e.g. 'eu-west-1'
 
     # Amazon AWS
@@ -48,6 +49,7 @@ module AssetSync
 
     def initialize
       self.fog_region = nil
+      self.fog_mirrors = []   #SAGI
       self.existing_remote_files = 'keep'
       self.gzip_compression = false
       self.manifest = false
@@ -109,6 +111,10 @@ module AssetSync
       defined?(Rails.root) ? File.exists?(self.yml_path) : false
     end
 
+    def fog_mirrors_list
+      (fog_mirrors||"").split(":")
+    end
+
     def yml
       begin
         @yml ||= YAML.load(ERB.new(IO.read(yml_path)).result)[Rails.env] rescue nil || {}
@@ -134,6 +140,7 @@ module AssetSync
       self.enabled                = yml["enabled"] if yml.has_key?('enabled')
       self.fog_provider           = yml["fog_provider"]
       self.fog_directory          = yml["fog_directory"]
+      self.fog_mirrors            = yml["fog_mirrors"] if yml.has_key?('fog_mirrors')
       self.fog_region             = yml["fog_region"]
       self.aws_access_key_id      = yml["aws_access_key_id"]
       self.aws_secret_access_key  = yml["aws_secret_access_key"]
