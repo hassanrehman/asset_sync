@@ -3,7 +3,9 @@
 
 # Asset Sync
 
+### What's new
 This gem adds the ability to add mirrors enabling option for several CDNs instead of just one. Based on [asset_sync by Rumble Labs](https://github.com/rumblelabs/asset_sync).
+
 
 Synchronises Assets between Rails and S3.
 
