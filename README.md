@@ -6,7 +6,7 @@
 ### What's new
 This gem adds the ability to add mirrors enabling option for several CDNs instead of just one. Based on [asset_sync by Rumble Labs](https://github.com/rumblelabs/asset_sync).
 
-
+### Introduction
 Synchronises Assets between Rails and S3.
 
 Asset Sync is built to run with the new Rails Asset Pipeline feature introduced in **Rails 3.1**.  After you run __bundle exec rake assets:precompile__ your assets will be synchronised to your S3
